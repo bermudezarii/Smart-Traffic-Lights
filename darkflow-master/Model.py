@@ -91,18 +91,50 @@ class Sector:
         for x in range(len(self.traffic_lights)):
             tf_results = self.traffic_lights[x].current_value
             results.append(sum(tf_results))
-        return results.index(max(results))
+            
+        best = results.index(max(results)) # es el index del mejor 
+        
+        if(self.check_sequence(2, best)): 
+            
+            results[best] = 0
+            new_best = results.index(max(results))
+            
+            return new_best
+        
+        return best 
             
     def set_others_red(self, tf_win):
         for x in range(len(self.traffic_lights)):
             tf = self.traffic_lights[x] 
-            if(tf != tf_win): 
-                self.traffic_lights[x].state = 0
+            if(x != tf_win): 
+                tf.state = 0
     
     def view_state(self): 
         string = ""
         for x in range(len(self.traffic_lights)):
             string += "name of tf: "+ self.traffic_lights[x].name + "  ** state: ** " + str(self.traffic_lights[x].state) + "\n"
         return string 
+    
+    def append_sequence(self, value): 
+        self.sequence.append(value)
+        if(len(self.sequence) > 20): 
+            self.sequence = self.sequence[-20:]
+            
+    def check_sequence(self, times, element): 
+        
+        last_tf = self.get_sequence()[-times:]
+        
+        tf_element = self.get_traffic_lights()[element]
+        
+        for x in range(len(last_tf)):
+            for_tf = self.get_traffic_lights()[last_tf[x]]
+            if(for_tf.name != tf_element.name): 
+                
+                return False
+        
+        return True
+    
+            
+    
             
             

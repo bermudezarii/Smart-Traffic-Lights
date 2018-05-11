@@ -78,12 +78,12 @@ def using_video(worker, tf):
     success = capture.set(cv2.CAP_PROP_POS_FRAMES, noFrame)
     while (capture.isOpened()):
         frames+=1
-        if (frames%10!=0):
+        if (frames%15!=0):
             capture.read()
             pass
         if (processed_frames == 20):
             break
-        elif(frames%10==0): 
+        elif(frames%15==0): 
             processed_frames += 1
             ret, frame = capture.read()
             if ret:
@@ -100,7 +100,7 @@ def using_video(worker, tf):
                     #frame = cv2.putText(frame, label, tl, cv2.FONT_HERSHEY_COMPLEX, 1, (0, 0, 0), 2)    
                 car_list.append(cars)
                 with print_lock:    
-                    print("|| cars: " + str(cars) + "|| video: " + tf.video_link + " || frame_no: " + str(noFrame))
+                    print("|| cars: " + str(cars) + "|| video: " + tf.video_link + " || frame_no: " + str(noFrame+frames))
                     print(threading.current_thread().name, worker)
                 #cv2.imshow('frame', frame)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -172,11 +172,14 @@ def start(sector):
         print("time: " , time.time()-start)
         time.sleep(2)
         tf_win = sector.get_more_cars()
+        sector.append_sequence(tf_win)
+        print("winner traffic light: " + str(tf_win))
         if(sector.traffic_lights[tf_win].state == 0):
-            sector.traffic_lights[tf_win].state == 2
+            print("was red, changing")
+            sector.traffic_lights[tf_win].state = 2    
             sector.set_others_red(tf_win)
-            print(sector.view_state())
             time.sleep(8)
+        print("the whole state:" + sector.view_state())
     for x in range(len(sector.get_traffic_lights())): 
         print(sector.get_traffic_lights()[x].current_value)
         
@@ -188,7 +191,8 @@ q = Queue()
 videos = ['videoplayback.mp4', 'videofile.avi']   
 tf1 = Traffic_light("Tf1 norte-sur", 100, 100, videos[0], 0, [])
 tf2 = Traffic_light("Tf2 este-oeste", 0, 0, videos[1], 2, [])
-sector = Sector("Barrio Amon - TEC", [tf1, tf2], [1])
+#sector = Sector("Barrio Amon - TEC", [tf1, tf2], [1])
+sector = Sector("Desconocido", [tf1, tf2], [1])
 
 for x in range(2): 
     tf = sector.get_traffic_lights()[x]
