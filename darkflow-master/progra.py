@@ -183,7 +183,7 @@ def start(sector):
     for x in range(len(sector.get_traffic_lights())): 
         print(sector.get_traffic_lights()[x].current_value)
         
-
+"""
 print_lock = threading.Lock()       
   
 q = Queue() 
@@ -203,11 +203,11 @@ for x in range(2):
 
 start(sector) 
   
-
+"""
     
-##example_video()  
+example_video()  
 ##using_camera()
-##using_video()
+#using_video()
 ##start()
 """
 imgcv = cv2.imread("2.jpg")
