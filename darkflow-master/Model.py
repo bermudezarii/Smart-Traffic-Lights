@@ -4,7 +4,7 @@
 @author: bermu
 """
 from moviepy.editor import VideoFileClip
-
+import cv2
 
 class Traffic_light: 
     def __init__(self, name, x_gps=0, y_gps=0, link='', stat=0, current_val=[]):
@@ -14,6 +14,9 @@ class Traffic_light:
         self.state = stat 
         self.current_value = current_val
         self.last_sec = 0 
+        capture = cv2.VideoCapture(self.video_link)
+        success, firstImage = capture.read()
+        self.last_image = firstImage
 
     def get_name(self):
         return self.name 
@@ -50,6 +53,13 @@ class Traffic_light:
     
     def set_last_sec(self, sec):
         self.last_sec = sec
+        
+    
+    def set_last_image(self, val):
+        self.last_image = val
+    
+    def get_last_image(self, sec):
+        return self.last_image
     
 class Sector: 
     def __init__(self, name, tf=[], seq=[]):

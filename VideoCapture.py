@@ -11,14 +11,15 @@ import PIL.Image, PIL.ImageTk
 import time
 
 class App:
-    def __init__(self, window, window_title, video_source=0, video_source2=0):
+    def __init__(self, window, window_title, sector, root=0):
+        self.sector = sector
         self.window = window
         self.window.title(window_title)
-        self.video_source = video_source
-        self.video_source2 = video_source2
+        self.video_source =  (self.sector.get_traffic_lights()[0]).get_video_link()
+        self.video_source2 =  (self.sector.get_traffic_lights()[1]).get_video_link()
         
-        self.vid = cv2.VideoCapture(video_source)
-        self.vid2 = cv2.VideoCapture(video_source2)
+        self.vid = cv2.VideoCapture(self.video_source)
+        self.vid2 = cv2.VideoCapture(self.video_source2)
         self.canvas = tkinter.Canvas(window, width = self.vid.get(3), height = self.vid.get(4))
         self.canvas.grid(row = 0, column = 0)
         
@@ -38,17 +39,18 @@ class App:
         self.vid2.release()
         
     
-    def update(self):
-        ret, frame = self.get_frame(self.vid)
-        ret2, frame2 = self.get_frame(self.vid2)
-        if ret and ret2:
-            self.photo = PIL.ImageTk.PhotoImage(image = PIL.Image.fromarray(frame))
-            self.canvas.create_image(0, 0, image = self.photo, anchor = tkinter.NW)
-            
-            self.photo2 = PIL.ImageTk.PhotoImage(image = PIL.Image.fromarray(frame2))
-            self.canvas2.create_image(0,0, image = self.photo2, anchor = tkinter.NW)
+    def update(self):   
+        frame = self.sector.get_traffic_lights()[0].last_image
+        frame2 = self.sector.get_traffic_lights()[1].last_image
+        
+        self.photo = PIL.ImageTk.PhotoImage(image = PIL.Image.fromarray(frame))
+        self.canvas.create_image(0, 0, image = self.photo, anchor = tkinter.NW)
+        
+        self.photo2 = PIL.ImageTk.PhotoImage(image = PIL.Image.fromarray(frame2))
+        self.canvas2.create_image(0,0, image = self.photo2, anchor = tkinter.NW)
         
         self.window.after(self.delay, self.update)
+        
         
     def get_frame(self, video):
         if video.isOpened():
@@ -88,8 +90,10 @@ class VideoCapture:
             if ret:
                 return (ret, cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
         return (ret, None)
-    
+"""
 root = tkinter.Tk()
 root.withdraw()
 top = tkinter.Toplevel(root)
-App(top, "Tkinter and OpenCV", "videoplayback.mp4", "videoplayback.mp4")
+app = App(top, "Tkinter and OpenCV", "videoplayback.mp4", "videoplayback.mp4", root)
+
+"""
