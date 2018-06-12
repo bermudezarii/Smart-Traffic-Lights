@@ -17,6 +17,7 @@ class Traffic_light:
         capture = cv2.VideoCapture(self.video_link)
         success, firstImage = capture.read()
         self.last_image = firstImage
+ 
 
     def get_name(self):
         return self.name 
@@ -54,12 +55,12 @@ class Traffic_light:
     def set_last_sec(self, sec):
         self.last_sec = sec
         
-    
     def set_last_image(self, val):
         self.last_image = val
-    
+ 
     def get_last_image(self, sec):
         return self.last_image
+ 
     
 class Sector: 
     def __init__(self, name, tf=[], seq=[]):

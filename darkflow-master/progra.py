@@ -10,16 +10,12 @@ from darkflow.net.build import TFNet
 from moviepy.editor import VideoFileClip
 from Model import Traffic_light, Sector
 from queue import Queue 
-from VideoCapture import App, VideoCapture
 import numpy as np
 import threading 
 import subprocess
 import time
 import cv2
-import tkinter
-start_time = time.time()
-print("start time:" + str(start_time))
-
+from VideoCapture import App, VideoCapture
 
 config = {
     'model': 'cfg/tiny-yolo.cfg',
@@ -36,8 +32,6 @@ def getLength(filename):
     stdout = subprocess.PIPE, stderr = subprocess.STDOUT)
   return [x for x in result.stdout.readlines() if "Duration" in x]
 
-
-        
 def using_video(worker, tf):    
     capture = cv2.VideoCapture(tf.video_link)
     colors = [tuple(255 * np.random.rand(3)) for i in range(5)]
@@ -52,7 +46,7 @@ def using_video(worker, tf):
         if (frames%15!=0):
             capture.read()
             pass
-        if (processed_frames == 1):
+        if (processed_frames == 20):
             break
         elif(frames%15==0): 
             processed_frames += 1
@@ -60,6 +54,7 @@ def using_video(worker, tf):
             if ret:
                 results = tfnet.return_predict(frame)
                 cars = 0 
+                #print(results)
                 for color, result in zip(colors, results):
                     if(result['label'] == 'car'): 
                         cars += 1 
@@ -67,9 +62,9 @@ def using_video(worker, tf):
                     br = (result['bottomright']['x'], result['bottomright']['y'])
                     label = result['label']
                     frame = cv2.rectangle(frame, tl, br, color, 7)
-                    frame = cv2.putText(frame, label, tl, cv2.FONT_HERSHEY_COMPLEX, 1, (0, 0, 0), 2)  
-                tf.set_last_image(frame)
+                    frame = cv2.putText(frame, label, tl, cv2.FONT_HERSHEY_COMPLEX, 1, (0, 0, 0), 2)    
                 car_list.append(cars)
+                tf.set_last_image(frame)
                 with print_lock:    
                     print("|| cars: " + str(cars) + "|| video: " + tf.video_link + " || frame_no: " + str(noFrame+frames))
                     print(threading.current_thread().name, worker)
@@ -83,8 +78,9 @@ def using_video(worker, tf):
                 break
     tf.current_value = car_list
     tf.set_last_sec(noFrame + 20*15)
-    tf.set_last_image(frame)
     return car_list
+            
+
 
     
 def threader(tf): 
@@ -99,13 +95,11 @@ def start(sector):
     until = sector.get_min_time()
     sec = 0 
     while(until > sec): 
-        while(sec % 20 == 0):
-            start = time.time() 
-            for worker in range(len(sector.get_traffic_lights())): 
-                q.put(worker)
-            q.join()
-            sec += 1
-    
+        start = time.time() 
+        for worker in range(len(sector.get_traffic_lights())): 
+            q.put(worker)
+        q.join()
+        sec += 20
         print("time: " , time.time()-start)
         time.sleep(2)
         tf_win = sector.get_more_cars()
@@ -119,6 +113,7 @@ def start(sector):
         print("the whole state:" + sector.view_state())
     for x in range(len(sector.get_traffic_lights())): 
         print(sector.get_traffic_lights()[x].current_value)
+        
 
 print_lock = threading.Lock()       
   
@@ -127,13 +122,9 @@ q = Queue()
 videos = ['videoplayback.mp4', 'videofile.avi']   
 tf1 = Traffic_light("Tf1 norte-sur", 100, 100, videos[0], 0, [])
 tf2 = Traffic_light("Tf2 este-oeste", 0, 0, videos[1], 2, [])
-root = tkinter.Tk()
-root.withdraw()
-top = tkinter.Toplevel(root)
-
 #sector = Sector("Barrio Amon - TEC", [tf1, tf2], [1])
 sector = Sector("Desconocido", [tf1, tf2], [1])
-app = App(top, "Tkinter and OpenCV", sector, root)
+app = App(sector)
 for x in range(2): 
     tf = sector.get_traffic_lights()[x]
     t = threading.Thread(target = threader,  args = (tf,))
@@ -142,16 +133,14 @@ for x in range(2):
 
 
 start(sector) 
-end_time = time.time()
-print("end time: " + str(end_time)) 
-print("total time: " + str(end_time - start_time))
+  
 
-
-example_video()  
+    
+#example_video()  
 ##using_camera()
 #using_video()
+##start()
 """
-
 imgcv = cv2.imread("2.jpg")
 result = tfnet.return_predict(imgcv)
 print(result)
@@ -159,59 +148,6 @@ print("quak")
 imgcv = cv2.imread("1.jpg")
 result = tfnet.return_predict(imgcv)
 print(result)
-"""
-
-
-"""
-#analyse only one image
-colors = [tuple(255 * np.random.rand(3)) for i in range(5)]    
-frame = cv2.imread('sj1.jpg')
-results = tfnet.return_predict(frame)
-print(results)    
-for color, result in zip(colors, results):
-    tl = (result['topleft']['x'], result['topleft']['y'])
-    br = (result['bottomright']['x'], result['bottomright']['y'])
-    label = result['label']
-    frame = cv2.rectangle(frame, tl, br, color, 7)
-    frame = cv2.putText(frame, label, tl, cv2.FONT_HERSHEY_COMPLEX, 1, (0, 0, 0), 2)    
-cv2.imshow('frame', frame)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
-
-
-def using_camera():  
-    cam = cv2.VideoCapture(0)
-    cam.set(cv2.CAP_PROP_FRAME_WIDTH,1920)
-    cam.set(cv2.CAP_PROP_FRAME_HEIGHT,1080)
-    
-    colors = [tuple(255 * np.random.rand(3)) for i in range(10)]
-
-    frames=0
-    while(1):
-        frames+=1
-        if frames%3!=0:
-            pass
-        ret, frame = cam.read()
-        results = tfnet.return_predict(frame)
-        if ret:
-            for color, result in zip(colors, results):
-                tl = (result['topleft']['x'], result['topleft']['y'])
-                br = (result['bottomright']['x'], result['bottomright']['y'])
-                label = result['label']
-                confidence = result['confidence']
-                text = '{}: {:0f}%'.format(label, confidence * 100)
-                frame = cv2.rectangle(frame, tl, br, color, 5)
-                frame = cv2.putText(frame, text, tl, cv2.FONT_HERSHEY_COMPLEX, 1, (0,0,0), 2)
-                ## aqui puede ser que en vez de mostrar los cuadros se mande esa info a analizar
-            cv2.imshow('frame', frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                cv2.destroyAllWindows()
-                break
-    
-        else:
-            cam.release()
-            cv2.destroyAllWindows()
-            break
 
 
 def example_video():    
@@ -248,5 +184,44 @@ def example_video():
                 cv2.destroyAllWindows()
                 break
             
+
+
+
+def using_camera():  
+    cam = cv2.VideoCapture(0)
+    cam.set(cv2.CAP_PROP_FRAME_WIDTH,1920)
+    cam.set(cv2.CAP_PROP_FRAME_HEIGHT,1080)
+    
+    colors = [tuple(255 * np.random.rand(3)) for i in range(10)]
+
+    frames=0
+    while(1):
+        frames+=1
+        if frames%3!=0:
+            pass
+        ret, frame = cam.read()
+        results = tfnet.return_predict(frame)
+        if ret:
+            for color, result in zip(colors, results):
+                tl = (result['topleft']['x'], result['topleft']['y'])
+                br = (result['bottomright']['x'], result['bottomright']['y'])
+                label = result['label']
+                confidence = result['confidence']
+                text = '{}: {:0f}%'.format(label, confidence * 100)
+                frame = cv2.rectangle(frame, tl, br, color, 5)
+                frame = cv2.putText(frame, text, tl, cv2.FONT_HERSHEY_COMPLEX, 1, (0,0,0), 2)
+                ## aqui puede ser que en vez de mostrar los cuadros se mande esa info a analizar
+            cv2.imshow('frame', frame)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                cv2.destroyAllWindows()
+                break
+    
+        else:
+            cam.release()
+            cv2.destroyAllWindows()
+            break
+        
+
+
 
 """
