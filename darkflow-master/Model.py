@@ -58,7 +58,7 @@ class Traffic_light:
     def set_last_image(self, val):
         self.last_image = val
  
-    def get_last_image(self, sec):
+    def get_last_image(self):
         return self.last_image
  
     

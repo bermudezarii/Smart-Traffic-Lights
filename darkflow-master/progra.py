@@ -17,6 +17,7 @@ import time
 import cv2
 from VideoCapture import App, VideoCapture
 
+black_pixel = np.array([0,0,0])
 config = {
     'model': 'cfg/tiny-yolo.cfg',
     'load': 'bin/yolov2-tiny.weights', 
@@ -24,6 +25,11 @@ config = {
     'gpu': 1.0
 }
 
+def getCenterSquare(result):
+    mid = [0,0]
+    mid[0] = (int(result['topleft']['x'])+ int(result['bottomright']['x'])) / 2;
+    mid[1] = (int(result['topleft']['y'])+ int(result['bottomright']['y'])) / 2;
+    return mid
 tfnet = TFNet(config)
 
 
@@ -34,10 +40,15 @@ def getLength(filename):
 
 def using_video(worker, tf):    
     capture = cv2.VideoCapture(tf.video_link)
-    colors = [tuple(255 * np.random.rand(3)) for i in range(5)]
+    colors = [tuple(254 * np.random.rand(3)) for i in range(5)]
     frames= 0 
+    frame1 = tf.get_last_image()
+    prvs = cv2.cvtColor(frame1,cv2.COLOR_BGR2GRAY)
+    hsv = np.zeros_like(frame1)
+    hsv[...,1] = 255
     total_frames = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
     car_list = [] 
+    moving_list = [] 
     processed_frames = 0 
     noFrame = tf.get_last_sec()
     success = capture.set(cv2.CAP_PROP_POS_FRAMES, noFrame)
@@ -51,19 +62,45 @@ def using_video(worker, tf):
         elif(frames%15==0): 
             processed_frames += 1
             ret, frame = capture.read()
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+            next = cv2.cvtColor(frame,cv2.COLOR_RGB2GRAY)
+            
+            flow = cv2.calcOpticalFlowFarneback(prvs,next, None, 0.5, 3, 15, 3, 5, 1.2, 0)
+            
+            mag, ang = cv2.cartToPolar(flow[...,0], flow[...,1])
+            hsv[...,0] = ang*180/np.pi/2
+            hsv[...,2] = cv2.normalize(mag,None,0,255,cv2.NORM_MINMAX)
+            rgb = cv2.cvtColor(hsv,cv2.COLOR_HSV2BGR) # este es el frame final que tiene el calculo del optical flow en colores
+            #ret, rgb = cv2.threshold(rgb, 10, 255, cv2.THRESH_BINARY) da problemas
+
             if ret:
+                
+
                 results = tfnet.return_predict(frame)
                 cars = 0 
+                cars_moving = 0 
+                
                 #print(results)
                 for color, result in zip(colors, results):
                     if(result['label'] == 'car'): 
                         cars += 1 
-                    tl = (result['topleft']['x'], result['topleft']['y'])
-                    br = (result['bottomright']['x'], result['bottomright']['y'])
-                    label = result['label']
-                    frame = cv2.rectangle(frame, tl, br, color, 7)
-                    frame = cv2.putText(frame, label, tl, cv2.FONT_HERSHEY_COMPLEX, 1, (0, 0, 0), 2)    
+                        mid = getCenterSquare(result)
+                        pixel = rgb[int(mid[1]), int(mid[0])]
+                        #print("pixel:" + str(pixel))
+                        if(pixel.any()!=black_pixel.any()):
+                            #print("car mooooving  quak")
+                            cars_moving += 1  
+                        else:
+                            #print(str(color))
+                            color = (255,255,255)
+                        tl = (result['topleft']['x'], result['topleft']['y'])
+                        br = (result['bottomright']['x'], result['bottomright']['y'])
+                        label = result['label']
+                        frame = cv2.rectangle(frame, tl, br, color, 7)
+                        frame = cv2.putText(frame, label, tl, cv2.FONT_HERSHEY_COMPLEX, 1, (0, 0, 0), 2)    
                 car_list.append(cars)
+                moving_list.append(cars_moving) 
                 tf.set_last_image(frame)
                 with print_lock:    
                     print("|| cars: " + str(cars) + "|| video: " + tf.video_link + " || frame_no: " + str(noFrame+frames))
@@ -76,8 +113,11 @@ def using_video(worker, tf):
                 capture.release()
                 cv2.destroyAllWindows()
                 break
+    #principal modificacion 
     tf.current_value = car_list
     tf.set_last_sec(noFrame + 20*15)
+    print("using_video car list:" + str(car_list))
+    print("using_video mov list:" + str(moving_list))
     return car_list
             
 
@@ -133,14 +173,14 @@ for x in range(2):
 
 
 start(sector) 
-  
 
-    
+
+"""
 #example_video()  
 ##using_camera()
 #using_video()
 ##start()
-"""
+
 imgcv = cv2.imread("2.jpg")
 result = tfnet.return_predict(imgcv)
 print(result)
